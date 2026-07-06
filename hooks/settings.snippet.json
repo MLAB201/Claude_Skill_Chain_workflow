@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe",
+            "args": [
+              "-NoProfile",
+              "-ExecutionPolicy",
+              "Bypass",
+              "-File",
+              "C:\\Users\\YOU\\.claude\\hooks\\archive-backup.ps1"
+            ],
+            "timeout": 30,
+            "statusMessage": "Backing up file to _archive"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"C:\\Users\\YOU\\.claude\\hooks\\trim-bash-output.js\"",
+            "timeout": 5,
+            "statusMessage": "Trimming noisy command output"
+          }
+        ]
+      }
+    ]
+  }
+}
