@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn>=0.30
+requests>=2.31
+youtube-transcript-api>=1.2,<2
+# yt-dlp tracks YouTube/TikTok site changes closely; keep it current
+# (pip install -U yt-dlp) when extraction starts failing.
+yt-dlp>=2026.8.19

@@ -1,0 +1,4 @@
+# Optional: local speech-to-text for videos that have no captions.
+# Pulls in CTranslate2 + PyAV (no system ffmpeg needed). The Whisper model
+# itself (~150 MB for "base") downloads from Hugging Face on first use.
+faster-whisper>=1.1

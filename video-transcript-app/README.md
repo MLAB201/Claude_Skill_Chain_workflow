@@ -1,0 +1,190 @@
+# Transcript Puller
+
+A small web app that pulls the transcript of a YouTube or TikTok video. Paste a link and
+you get the captions as text you can search, copy, or download as `.txt`, `.srt`, `.vtt`,
+or `.json`.
+
+- **YouTube**: `youtube.com/watch`, `youtu.be`, Shorts, live and embed links (also
+  `m.` and `music.` hosts, or a bare 11-character video ID).
+- **TikTok**: `tiktok.com/@user/video/…`, `vm.tiktok.com/…`, `vt.tiktok.com/…` and
+  `tiktok.com/t/…` short links.
+- Videos with **no captions** can optionally be transcribed from their audio with local
+  speech-to-text (Whisper). This is off unless you install it and tick the box.
+
+The result always says where the text came from: creator captions, auto-generated
+captions, or speech-to-text. A video with no captions returns a clear "no captions"
+error, never a blank or made-up transcript.
+
+## Quick start
+
+Needs Python 3.10+.
+
+```bash
+cd video-transcript-app
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Open <http://127.0.0.1:8000>.
+
+**Run it on your own computer.** YouTube and TikTok often bot-check or block requests
+from cloud/datacenter IP addresses. From a home connection it generally just works. If
+you have to host it on a server, see `TRANSCRIPT_PROXY` and `YTDLP_COOKIES_FILE` below.
+
+### Optional: speech-to-text for videos without captions
+
+```bash
+pip install -r requirements-whisper.txt
+```
+
+This adds [faster-whisper](https://github.com/SYSTRAN/faster-whisper). It runs on the CPU
+and needs no system ffmpeg. The first transcription downloads the Whisper model (about
+150 MB for the default `base` model) from Hugging Face. Once it's installed, a checkbox
+appears in the UI. Speech-to-text runs only when a video has no usable captions, one video
+at a time, for videos up to 20 minutes (configurable).
+
+## How it works
+
+```
+YouTube:  youtube-transcript-api  ->  yt-dlp captions  ->  [speech-to-text]
+TikTok:                               yt-dlp captions  ->  [speech-to-text]
+```
+
+1. The link is validated against an exact allowlist of YouTube/TikTok hosts and rebuilt
+   into a canonical URL. The raw input is never handed to the downloaders.
+2. **YouTube** first tries [youtube-transcript-api](https://github.com/jdepoix/youtube-transcript-api)
+   (a couple of small requests, no media download). If YouTube blocks that, it falls back
+   to [yt-dlp](https://github.com/yt-dlp/yt-dlp).
+3. **TikTok** goes through yt-dlp, which reads TikTok's own captions.
+4. The caption track is chosen in this order:
+   1. creator captions in your preferred language
+   2. auto-captions in your preferred language
+   3. creator captions in the spoken language
+   4. auto-captions in the spoken language
+
+   Machine-translated tracks are never offered. Every available track appears in the
+   **Captions** dropdown.
+5. The captions (json3, WebVTT or SRT) are parsed into timed lines and grouped into
+   paragraphs. YouTube's "rolling" auto-captions, which repeat every line twice, are
+   de-duplicated.
+6. If there are no captions and you asked for speech-to-text, the audio is downloaded to a
+   temporary folder, transcribed, and deleted.
+
+Successful results are cached in memory for 30 minutes.
+
+## Configuration
+
+All settings are optional environment variables.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `TRANSCRIPT_LANGUAGES` | `en` | Preferred caption languages, comma-separated (e.g. `es,en`). |
+| `TRANSCRIPT_PROXY` | – | Proxy URL (`http://user:pass@host:port`) for YouTube/TikTok requests. |
+| `YTDLP_COOKIES_FILE` | – | Netscape-format cookies file for yt-dlp (helps with "confirm you're not a bot"). |
+| `TRANSCRIPT_TIMEOUT` | `20` | Per-request network timeout, seconds. |
+| `TRANSCRIPT_CACHE_TTL` | `1800` | Cache lifetime in seconds (`0` disables the cache). |
+| `TRANSCRIPT_CACHE_SIZE` | `128` | Max cached transcripts. |
+| `WHISPER_ENABLED` | `true` | Set `false` to hide speech-to-text even if installed. |
+| `WHISPER_MODEL` | `base` | Whisper model: `tiny`, `base`, `small`, `medium`, `large-v3`, … |
+| `WHISPER_DEVICE` / `WHISPER_COMPUTE_TYPE` | `cpu` / `int8` | Use `cuda` / `float16` on an NVIDIA GPU. |
+| `WHISPER_MAX_DURATION` | `1200` | Longest video (seconds) sent to speech-to-text. |
+| `WHISPER_MAX_DOWNLOAD_MB` | `200` | Largest audio download for speech-to-text. |
+
+## API
+
+`POST /api/transcript`
+
+```json
+{ "url": "https://youtu.be/dQw4w9WgXcQ", "language": "a.en", "speech_to_text": false }
+```
+
+`language` is optional. Pass a `code` from the `tracks` list of an earlier response to
+pick a specific track. Codes are `en` for creator captions and `a.en` for auto-captions.
+
+Response (abridged):
+
+```json
+{
+  "platform": "youtube", "video_id": "dQw4w9WgXcQ", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "title": "…", "author": "…", "duration": 212.0, "thumbnail": "…",
+  "track_code": "en", "language": "en", "language_name": "English",
+  "kind": "manual", "provider": "youtube-transcript-api",
+  "tracks": [{ "code": "en", "language": "en", "name": "English", "kind": "manual", "is_original": false }],
+  "segments": [{ "start": 0.16, "end": 2.15, "text": "…" }],
+  "paragraphs": [{ "start": 0.16, "text": "…" }],
+  "text": "…", "word_count": 1234, "notes": []
+}
+```
+
+`kind` is `manual` (creator captions), `auto` (platform auto-captions) or
+`speech-to-text`. `notes` lists any fallbacks that were taken.
+
+Errors always have the shape `{"error": {"code", "message", "details": []}}`:
+
+| HTTP | `code` | When |
+|---|---|---|
+| 400 | `invalid_url`, `invalid_request` | Not a YouTube/TikTok video link, or a malformed request. |
+| 404 | `no_transcript` | The video has no captions (and speech-to-text wasn't used). |
+| 404 | `video_unavailable` | Removed, private, or region-locked. |
+| 422 | `speech_to_text_unavailable` | Speech-to-text not installed, or the video is too long. |
+| 429 | `speech_to_text_busy` | Another speech-to-text job is running. |
+| 502 | `upstream_error` | YouTube/TikTok returned something unexpected. |
+| 503 | `upstream_blocked` | YouTube/TikTok is blocking this server (bot check, IP block, rate limit). |
+
+`GET /api/health` reports whether speech-to-text is available.
+
+## Troubleshooting
+
+- **"…is blocking requests from this server's IP address"**: run the app locally, or set
+  `TRANSCRIPT_PROXY` (a residential proxy) and/or `YTDLP_COOKIES_FILE`.
+- **Extraction suddenly fails for every video**: YouTube and TikTok change often. Update
+  the extractors with `pip install -U yt-dlp youtube-transcript-api`.
+- **yt-dlp warns about a missing JavaScript runtime**: recent yt-dlp versions want an
+  external JS runtime (such as [Deno](https://deno.com/)) for full YouTube support.
+  Without one, YouTube audio downloads for speech-to-text can fail. See yt-dlp's
+  installation docs.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest                                 # backend
+node --test tests/formats.test.mjs     # frontend export/format helpers
+```
+
+The tests run fully offline:
+
+- The YouTube path drives the real `youtube-transcript-api` library through a fake HTTP
+  adapter. The adapter replays recorded YouTube responses (see `tests/fixtures/README.md`).
+- The yt-dlp caption and audio downloads run the real `yt-dlp` library against a local
+  HTTP server.
+
+## Limitations
+
+- Captions come from the platform. Auto-generated captions and speech-to-text contain
+  mistakes, especially with names and jargon.
+- TikTok doesn't say which caption track is the original language, so with no
+  preferred-language match the first track TikTok lists is used.
+- TikTok timestamps aren't links: TikTok has no "open at this time" URL.
+- Respect YouTube's and TikTok's terms of service and the creators' copyright when using
+  transcripts.
+
+## Layout
+
+```
+app/
+  main.py         FastAPI app: routes, error mapping, security headers, static files
+  service.py      the fallback pipeline + in-memory cache
+  urls.py         link validation and canonicalisation (host allowlist)
+  youtube_api.py  YouTube via youtube-transcript-api (+ oEmbed for title/author)
+  ytdlp_source.py YouTube/TikTok via yt-dlp: track listing, caption + audio download
+  speech.py       optional faster-whisper speech-to-text
+  captions.py     WebVTT / SRT / json3 parsers, paragraphing
+  tracks.py       caption-track selection policy
+  models.py       shared data shapes and error types
+  config.py       environment-variable settings
+static/           the frontend (plain HTML/CSS/JS, no build step)
+tests/            pytest suite + node formatter tests + fixtures
+```

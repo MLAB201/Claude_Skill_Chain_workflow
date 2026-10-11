@@ -23,6 +23,7 @@ hooks/
   archive-backup.ps1   PreToolUse hook: backs up a file before Claude edits it
   settings.snippet.json  reference JSON (for humans doing it by hand)
   README.md            full hook explainer / manual setup instructions
+video-transcript-app/  web app: pull transcripts from YouTube & TikTok videos
 ```
 
 ## Install — the easy way
@@ -62,6 +63,14 @@ each skill's description says it's for (see each `SKILL.md` for the exact trigge
 Skills work with zero hooks installed — the hooks only add token savings and automatic
 backups on top. For the hooks, see [`hooks/README.md`](hooks/README.md) for the manual steps,
 including merging the JSON into `settings.json` by hand.
+
+## `video-transcript-app/` — YouTube & TikTok transcripts
+
+A small web app (Python/FastAPI backend, plain HTML/JS frontend): paste a YouTube or TikTok
+link and get the video's transcript to search, copy, or download as `.txt`/`.srt`/`.vtt`/`.json`.
+It uses the platform's captions when they exist (via `youtube-transcript-api` and `yt-dlp`), and
+can optionally fall back to local Whisper speech-to-text for videos with none. Setup, API, and
+configuration are in [`video-transcript-app/README.md`](video-transcript-app/README.md).
 
 ## `/rigorous-build` — the main one
 

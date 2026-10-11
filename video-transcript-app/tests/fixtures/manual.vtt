@@ -1,0 +1,20 @@
+WEBVTT
+
+NOTE This is a comment block and must be ignored.
+
+STYLE
+::cue { color: yellow; }
+
+intro
+00:00:01.000 --> 00:00:03.500 line:90%
+<v Narrator>Welcome to <i>the</i> show.</v>
+
+00:00:03.500 --> 00:00:06.000
+Today: cats &amp; dogs
+— and &lt;birds&gt;
+
+00:01:02.250 --> 00:01:04.000
+No.
+
+00:01:04.000 --> 00:01:05.000
+No.
