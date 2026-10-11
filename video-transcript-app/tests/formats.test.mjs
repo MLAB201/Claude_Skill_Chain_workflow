@@ -4,6 +4,7 @@ import { test } from "node:test";
 
 import {
   countMatches,
+  extractVideoLink,
   filenameFor,
   formatClock,
   formatSrtTime,
@@ -76,4 +77,17 @@ test("timestamp links only for YouTube", () => {
     "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=75s",
   );
   assert.equal(timestampUrl({ platform: "tiktok", video_id: "1" }, 5), null);
+});
+
+test("pulls the video link out of shared text", () => {
+  // What the TikTok and YouTube Android apps put in the share text.
+  assert.equal(
+    extractVideoLink("Check out this video! #fyp https://vm.tiktok.com/ZMabc123/ "),
+    "https://vm.tiktok.com/ZMabc123/",
+  );
+  assert.equal(extractVideoLink("https://youtu.be/dQw4w9WgXcQ?si=Ab_cD-12"), "https://youtu.be/dQw4w9WgXcQ?si=Ab_cD-12");
+  assert.equal(extractVideoLink("(see https://youtu.be/dQw4w9WgXcQ)."), "https://youtu.be/dQw4w9WgXcQ");
+  // url param empty, text has the link, title is just a title
+  assert.equal(extractVideoLink(null, "Watch: https://www.youtube.com/shorts/dQw4w9WgXcQ", "A title"), "https://www.youtube.com/shorts/dQw4w9WgXcQ");
+  assert.equal(extractVideoLink("no link here", undefined, ""), "");
 });

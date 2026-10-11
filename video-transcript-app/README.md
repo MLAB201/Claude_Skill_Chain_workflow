@@ -32,6 +32,7 @@ Open <http://127.0.0.1:8000>.
 **Run it on your own computer.** YouTube and TikTok often bot-check or block requests
 from cloud/datacenter IP addresses. From a home connection it generally just works. If
 you have to host it on a server, see `TRANSCRIPT_PROXY` and `YTDLP_COOKIES_FILE` below.
+To use it from your phone, see [Install it on your Android phone](#install-it-on-your-android-phone).
 
 ### Optional: speech-to-text for videos without captions
 
@@ -44,6 +45,35 @@ and needs no system ffmpeg. The first transcription downloads the Whisper model 
 150 MB for the default `base` model) from Hugging Face. Once it's installed, a checkbox
 appears in the UI. Speech-to-text runs only when a video has no usable captions, one video
 at a time, for videos up to 20 minutes (configurable).
+
+## Install it on your Android phone
+
+The app can be installed on Android as a home-screen app. It opens full-screen with its own
+icon, and it shows up in the **Share** menu of the YouTube and TikTok apps. The phone is the
+screen; the app itself keeps running on your computer.
+
+Android only installs apps served over HTTPS. The easiest way to get HTTPS, and to reach your
+computer from anywhere, is [Tailscale](https://tailscale.com) (free for personal use):
+
+1. Install Tailscale on your computer and on your phone, and sign in to the same account on both.
+2. In the Tailscale admin console, open **DNS** and make sure **MagicDNS** and **HTTPS
+   Certificates** are enabled.
+3. On your computer, start the app (as in Quick start), then in a second terminal run:
+   ```bash
+   tailscale serve --bg 8000
+   ```
+   It prints your app's address, something like `https://my-laptop.tail1234.ts.net`. Run
+   `tailscale serve status` to see it again, or `tailscale serve reset` to turn it off. If your
+   Tailscale version uses different options, see Tailscale's
+   [`serve` documentation](https://tailscale.com/kb/1312/serve).
+4. On your phone, open that address in **Chrome**, tap **⋮ → Install app** (or **Add to Home
+   screen**), and confirm.
+
+Then, in the YouTube or TikTok app, tap **Share** on a video and choose **Transcripts**. The
+transcript opens straight away. You can also tap **Paste** in the app after copying a link.
+
+Only devices signed in to your Tailscale account can reach the app. If the computer is off or
+the app isn't running, the phone app still opens, and it tells you it can't reach the server.
 
 ## How it works
 
@@ -185,6 +215,7 @@ app/
   tracks.py       caption-track selection policy
   models.py       shared data shapes and error types
   config.py       environment-variable settings
-static/           the frontend (plain HTML/CSS/JS, no build step)
+static/           the frontend (plain HTML/CSS/JS, no build step), plus the
+                  installable-app files: manifest.json, sw.js, icons/
 tests/            pytest suite + node formatter tests + fixtures
 ```

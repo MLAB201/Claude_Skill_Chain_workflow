@@ -69,8 +69,10 @@ including merging the JSON into `settings.json` by hand.
 A small web app (Python/FastAPI backend, plain HTML/JS frontend): paste a YouTube or TikTok
 link and get the video's transcript to search, copy, or download as `.txt`/`.srt`/`.vtt`/`.json`.
 It uses the platform's captions when they exist (via `youtube-transcript-api` and `yt-dlp`), and
-can optionally fall back to local Whisper speech-to-text for videos with none. Setup, API, and
-configuration are in [`video-transcript-app/README.md`](video-transcript-app/README.md).
+can optionally fall back to local Whisper speech-to-text for videos with none. It can also be
+installed on an Android phone as a home-screen app that appears in the YouTube and TikTok
+**Share** menus. Setup, phone install, API, and configuration are in
+[`video-transcript-app/README.md`](video-transcript-app/README.md).
 
 ## `/rigorous-build` — the main one
 

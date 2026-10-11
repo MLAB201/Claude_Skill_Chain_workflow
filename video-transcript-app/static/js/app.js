@@ -2,6 +2,7 @@
 // so it is only ever inserted with textContent, never innerHTML.
 import {
   countMatches,
+  extractVideoLink,
   filenameFor,
   formatClock,
   splitMatches,
@@ -19,6 +20,7 @@ const els = {
   form: $("lookup-form"),
   url: $("url-input"),
   submit: $("submit-btn"),
+  paste: $("paste-btn"),
   sttOption: $("stt-option"),
   stt: $("stt-input"),
   sttLimit: $("stt-limit"),
@@ -114,7 +116,10 @@ async function fetchTranscript(url, language) {
       body: JSON.stringify(body),
     });
   } catch {
-    throw { message: "Couldn't reach the server. Is it still running?", details: [] };
+    throw {
+      message: "Couldn't reach the server.",
+      details: ["Check that the computer running Transcript Puller is on and the app is still running."],
+    };
   }
   let data = null;
   try {
@@ -172,7 +177,8 @@ async function lookup(url, language = null) {
 
 function updateAddressBar(url) {
   try {
-    const next = new URL(window.location.href);
+    // Also drops any ?text=/&title= left over from a share.
+    const next = new URL("/", window.location.href);
     next.searchParams.set("url", url);
     window.history.replaceState(null, "", next);
   } catch {
@@ -415,12 +421,31 @@ function setView(view) {
 
 els.form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const url = els.url.value.trim();
+  // Accept a whole pasted share message, not just a bare link.
+  const url = extractVideoLink(els.url.value) || els.url.value.trim();
   if (!url) {
     showError("Paste a YouTube or TikTok video link first.");
     els.url.focus();
     return;
   }
+  els.url.value = url;
+  lookup(url);
+});
+
+els.paste.addEventListener("click", async () => {
+  let text = "";
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    showError("Couldn't read the clipboard.", ["Long-press the link box and choose Paste instead."]);
+    return;
+  }
+  const url = extractVideoLink(text) || text.trim();
+  if (!url) {
+    showError("The clipboard is empty.", ["Copy a YouTube or TikTok link first (Share → Copy link)."]);
+    return;
+  }
+  els.url.value = url;
   lookup(url);
 });
 
@@ -467,10 +492,26 @@ async function init() {
     /* server unreachable; the first lookup will report it */
   }
 
-  const initial = new URL(window.location.href).searchParams.get("url");
-  if (initial) {
-    els.url.value = initial;
-    lookup(initial);
+  if (navigator.clipboard?.readText) els.paste.hidden = false;
+
+  // Opened with ?url=… (a bookmark) or from Android's Share menu, which sends
+  // the shared message as ?text=… and sometimes ?title=….
+  const params = new URL(window.location.href).searchParams;
+  const shared = ["url", "text", "title"].map((name) => params.get(name)).filter(Boolean);
+  if (shared.length) {
+    const initial = extractVideoLink(...shared) || (params.get("url") || "").trim();
+    if (initial) {
+      els.url.value = initial;
+      lookup(initial);
+    } else {
+      showError("That share didn't include a video link.", ["Share a YouTube or TikTok video, or paste its link."]);
+    }
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* needs https (or localhost); the app works without it, it just can't be installed */
+    });
   }
 }
 

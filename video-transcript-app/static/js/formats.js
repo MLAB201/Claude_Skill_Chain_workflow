@@ -105,3 +105,16 @@ export function timestampUrl(result, seconds) {
   if (result.platform !== "youtube") return null;
   return `https://www.youtube.com/watch?v=${encodeURIComponent(result.video_id)}&t=${Math.floor(seconds)}s`;
 }
+
+/**
+ * The first http(s) link in any of the given strings, or "". Apps share links
+ * wrapped in text ("Check out this video! https://vm.tiktok.com/…/"), and
+ * Android puts the YouTube/TikTok share in `text` rather than `url`.
+ */
+export function extractVideoLink(...candidates) {
+  for (const candidate of candidates) {
+    const match = String(candidate ?? "").match(/https?:\/\/[^\s<>"']+/i);
+    if (match) return match[0].replace(/[),.!?;:\]]+$/, "");
+  }
+  return "";
+}

@@ -112,6 +112,8 @@ h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.0
 /* Lookup form */
 .input-row { display: flex; gap: 8px; }
 .input-row input { flex: 1; min-width: 0; }
+.input-actions { display: flex; gap: 8px; }
+.input-actions .btn { min-height: 42px; }
 
 input[type="url"], input[type="search"], select {
   font: inherit;
@@ -262,7 +264,7 @@ mark { background: var(--mark-bg); color: var(--mark-text); border-radius: 3px; 
   .panel { padding: 16px; }
   h1 { font-size: 1.25rem; }
   .input-row { flex-direction: column; }
-  .btn-primary { width: 100%; }
+  .input-actions .btn-primary { flex: 1; }
   .thumb { width: 112px; }
   .thumb.portrait { width: 72px; }
   .search-field input { width: 100%; }
