@@ -232,6 +232,11 @@ input[type="url"]:focus, input[type="search"]:focus, select:focus { outline: 2px
 
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; }
 .actions-label { font-size: 0.8125rem; color: var(--muted); margin-left: 6px; }
+.claude-hint {
+  margin: 10px 0 0; padding: 9px 12px; font-size: 0.875rem;
+  background: var(--accent-soft); color: var(--text); border-radius: var(--radius-sm);
+}
+.claude-hint a { font-weight: 600; }
 .stats { margin-left: auto; font-size: 0.8125rem; }
 
 /* Transcript */

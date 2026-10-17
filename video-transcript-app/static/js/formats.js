@@ -118,3 +118,16 @@ export function extractVideoLink(...candidates) {
   }
   return "";
 }
+
+const SOURCE_LABELS = { manual: "creator captions", auto: "auto-generated captions", "speech-to-text": "speech-to-text" };
+const PLATFORM_LABELS = { youtube: "YouTube", tiktok: "TikTok" };
+
+/** The transcript as a message for Claude: which video it is, then the text. */
+export function claudeMessage(result, transcriptText) {
+  const platform = PLATFORM_LABELS[result.platform] || "video";
+  const video = result.title
+    ? `the ${platform} video "${result.title}"${result.author ? ` by ${result.author}` : ""}`
+    : `a ${platform} video`;
+  const source = SOURCE_LABELS[result.kind] || "captions";
+  return `Here is the transcript of ${video} (${result.url}), from its ${source}.\n\n${transcriptText.trim()}\n`;
+}

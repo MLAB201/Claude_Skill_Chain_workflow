@@ -2,7 +2,7 @@
 
 A small web app that pulls the transcript of a YouTube or TikTok video. Paste a link and
 you get the captions as text you can search, copy, or download as `.txt`, `.srt`, `.vtt`,
-or `.json`.
+or `.json`, or tap **Send to Claude** to hand the transcript straight to Claude.
 
 - **YouTube**: `youtube.com/watch`, `youtu.be`, Shorts, live and embed links (also
   `m.` and `music.` hosts, or a bare 11-character video ID).
@@ -71,6 +71,11 @@ computer from anywhere, is [Tailscale](https://tailscale.com) (free for personal
 
 Then, in the YouTube or TikTok app, tap **Share** on a video and choose **Transcripts**. The
 transcript opens straight away. You can also tap **Paste** in the app after copying a link.
+
+To ask Claude about the video, tap **Send to Claude** and pick the Claude app in the share
+sheet. The transcript arrives in a new message, labelled with the video's title and link, ready
+for your question. On a computer, the button copies the same text and links to Claude so you can
+paste it into a new chat.
 
 Only devices signed in to your Tailscale account can reach the app. If the computer is off or
 the app isn't running, the phone app still opens, and it tells you it can't reach the server.

@@ -1,6 +1,7 @@
 // UI for the transcript API. Transcript text comes from third-party platforms,
 // so it is only ever inserted with textContent, never innerHTML.
 import {
+  claudeMessage,
   countMatches,
   extractVideoLink,
   filenameFor,
@@ -42,6 +43,8 @@ const els = {
   timestamps: $("timestamps-input"),
   transcript: $("transcript"),
   copy: $("copy-btn"),
+  claude: $("claude-btn"),
+  claudeHint: $("claude-hint"),
   stats: $("stats"),
 };
 
@@ -223,6 +226,7 @@ function badge(text, className) {
 function renderResult() {
   const r = state.result;
   els.result.hidden = false;
+  els.claudeHint.hidden = true;
 
   // Video card
   els.title.textContent = r.title || `${PLATFORM_NAMES[r.platform]} video ${r.video_id}`;
@@ -359,12 +363,10 @@ function currentText() {
   return els.timestamps.checked && state.view === "segments" ? toTimestampedText(r.segments) : toPlainText(r);
 }
 
-async function copyText() {
-  const text = currentText();
-  let ok = false;
+async function copyToClipboard(text) {
   try {
     await navigator.clipboard.writeText(text);
-    ok = true;
+    return true;
   } catch {
     // Clipboard API needs a secure context (https or localhost); fall back.
     const area = document.createElement("textarea");
@@ -374,17 +376,59 @@ async function copyText() {
     area.style.opacity = "0";
     document.body.append(area);
     area.select();
+    let ok = false;
     try {
       ok = document.execCommand("copy");
     } catch {
       ok = false;
     }
     area.remove();
+    return ok;
   }
+}
+
+async function copyText() {
+  const ok = await copyToClipboard(currentText());
   els.copy.textContent = ok ? "Copied" : "Copy failed";
   setTimeout(() => {
     els.copy.textContent = "Copy text";
   }, 1600);
+}
+
+// Android's share sheet can't carry arbitrarily large text; past this, copy instead.
+const SHARE_LIMIT = 400000;
+
+function showClaudeHint(copied) {
+  els.claudeHint.replaceChildren();
+  if (copied) {
+    const link = document.createElement("a");
+    link.href = "https://claude.ai/new";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Open Claude";
+    els.claudeHint.append("Copied the transcript. ", link, " and paste it into a new chat, then ask your question.");
+  } else {
+    els.claudeHint.textContent = "Couldn't copy automatically. Select the transcript text, copy it, and paste it into Claude.";
+  }
+  els.claudeHint.hidden = false;
+}
+
+async function sendToClaude() {
+  const r = state.result;
+  if (!r) return;
+  const text = claudeMessage(r, currentText());
+  // On a phone, the share sheet hands the text straight to the Claude app.
+  const phone = window.matchMedia("(pointer: coarse)").matches;
+  if (phone && navigator.share && text.length <= SHARE_LIMIT) {
+    try {
+      await navigator.share({ text });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return; // share sheet closed
+      // Sharing isn't possible here: copy instead.
+    }
+  }
+  showClaudeHint(await copyToClipboard(text));
 }
 
 const DOWNLOADS = {
@@ -469,6 +513,7 @@ els.timestamps.addEventListener("change", () => {
 });
 els.stt.addEventListener("change", savePrefs);
 els.copy.addEventListener("click", copyText);
+els.claude.addEventListener("click", sendToClaude);
 for (const btn of document.querySelectorAll("[data-view]")) {
   btn.addEventListener("click", () => setView(btn.dataset.view));
 }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  claudeMessage,
   countMatches,
   extractVideoLink,
   filenameFor,
@@ -90,4 +91,14 @@ test("pulls the video link out of shared text", () => {
   // url param empty, text has the link, title is just a title
   assert.equal(extractVideoLink(null, "Watch: https://www.youtube.com/shorts/dQw4w9WgXcQ", "A title"), "https://www.youtube.com/shorts/dQw4w9WgXcQ");
   assert.equal(extractVideoLink("no link here", undefined, ""), "");
+});
+
+test("message for Claude says which video the transcript is from", () => {
+  const yt = { platform: "youtube", title: "Rainwater 101", author: "Practical Homestead", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", kind: "manual" };
+  assert.equal(
+    claudeMessage(yt, "first line\n\nsecond line\n"),
+    'Here is the transcript of the YouTube video "Rainwater 101" by Practical Homestead (https://www.youtube.com/watch?v=dQw4w9WgXcQ), from its creator captions.\n\nfirst line\n\nsecond line\n',
+  );
+  const tt = { platform: "tiktok", title: null, author: null, url: "https://www.tiktok.com/@u/video/1", kind: "auto" };
+  assert.ok(claudeMessage(tt, "hi").startsWith("Here is the transcript of a TikTok video (https://www.tiktok.com/@u/video/1), from its auto-generated captions."));
 });
