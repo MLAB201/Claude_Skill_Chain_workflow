@@ -71,7 +71,8 @@ link and get the video's transcript to search, copy, or download as `.txt`/`.srt
 It uses the platform's captions when they exist (via `youtube-transcript-api` and `yt-dlp`), and
 can optionally fall back to local Whisper speech-to-text for videos with none. It can also be
 installed on an Android phone as a home-screen app that appears in the YouTube and TikTok
-**Share** menus. Setup, phone install, API, and configuration are in
+**Share** menus, and run as a local MCP server so Claude (desktop app, Claude Code) or any MCP
+client can fetch transcripts itself. Setup, phone install, MCP, API, and configuration are in
 [`video-transcript-app/README.md`](video-transcript-app/README.md).
 
 ## `/rigorous-build` — the main one

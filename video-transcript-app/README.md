@@ -2,7 +2,10 @@
 
 A small web app that pulls the transcript of a YouTube or TikTok video. Paste a link and
 you get the captions as text you can search, copy, or download as `.txt`, `.srt`, `.vtt`,
-or `.json`, or tap **Send to Claude** to hand the transcript straight to Claude.
+or `.json`, or tap **Send to Claude** to hand the transcript straight to Claude. It also runs
+as an [MCP server](#use-it-from-claude-mcp-server), so Claude can fetch a transcript itself
+when you paste a link in a chat. Everything runs on your own computer; no third-party
+transcript service is involved.
 
 - **YouTube**: `youtube.com/watch`, `youtu.be`, Shorts, live and embed links (also
   `m.` and `music.` hosts, or a bare 11-character video ID).
@@ -79,6 +82,69 @@ paste it into a new chat.
 
 Only devices signed in to your Tailscale account can reach the app. If the computer is off or
 the app isn't running, the phone app still opens, and it tells you it can't reach the server.
+
+## Use it from Claude (MCP server)
+
+`mcp_server.py` runs the same transcript pipeline as an
+[MCP](https://modelcontextprotocol.io) server. Once it's added, paste a video link into a
+Claude chat and ask about it ("get the transcript of https://youtu.be/… and summarize it").
+Claude calls the server, which fetches the captions on your computer, and answers from the
+full transcript.
+
+You need two full paths from the Quick start install:
+
+- **Python**: `/full/path/to/video-transcript-app/.venv/bin/python`
+  (Windows: `C:\full\path\to\video-transcript-app\.venv\Scripts\python.exe`)
+- **Server**: `/full/path/to/video-transcript-app/mcp_server.py`
+
+Your MCP client starts the server itself; you don't run it in a terminal.
+
+**Claude desktop app.** Open **Settings → Developer → Edit Config**, which opens
+`claude_desktop_config.json`, and add:
+
+```json
+{
+  "mcpServers": {
+    "transcripts": {
+      "command": "/full/path/to/video-transcript-app/.venv/bin/python",
+      "args": ["/full/path/to/video-transcript-app/mcp_server.py"]
+    }
+  }
+}
+```
+
+On Windows, write each `\` in the paths as `\\`. Restart Claude and the server shows up under
+**Settings → Developer**. Keep the name `transcripts`: the Transcript Puller artifact looks for
+a server with that name.
+
+**Claude Code.**
+
+```bash
+claude mcp add --scope user transcripts -- /full/path/to/video-transcript-app/.venv/bin/python /full/path/to/video-transcript-app/mcp_server.py
+```
+
+**Other MCP clients** (your own agent setup, for example) can run the same command over stdio.
+For a client that wants a URL instead, start it with `python mcp_server.py --http` and point
+the client at `http://127.0.0.1:8765/mcp` (`--port` changes the port). It only listens on this
+computer.
+
+The server has one tool, `get_transcript`:
+
+| Argument | Meaning |
+|---|---|
+| `url` | The YouTube or TikTok link (required). |
+| `language` | A track `code` from an earlier result, e.g. `en` (creator captions) or `a.en` (auto-captions). |
+| `speech_to_text` | Transcribe the audio when there are no captions (needs the Whisper install; slow). |
+| `timestamps` | Start each paragraph with its `[m:ss]` time (default on). |
+
+It answers with a short header (title, channel, link, caption source, length) followed by the
+transcript in paragraphs, plus the timed lines as structured content for programs. Failures
+come back as tool errors ending in the error `code` from the [API](#api) table, such as
+`[no_transcript]` or `[upstream_blocked]`.
+
+Claude on the web and in the phone app reach connectors from Anthropic's servers, so they
+can't see a server on your computer. On your phone, use the
+[home-screen app](#install-it-on-your-android-phone) and **Send to Claude** instead.
 
 ## How it works
 
@@ -211,6 +277,7 @@ The tests run fully offline:
 ```
 app/
   main.py         FastAPI app: routes, error mapping, security headers, static files
+  mcp_server.py   MCP server exposing the get_transcript tool
   service.py      the fallback pipeline + in-memory cache
   urls.py         link validation and canonicalisation (host allowlist)
   youtube_api.py  YouTube via youtube-transcript-api (+ oEmbed for title/author)
@@ -220,6 +287,7 @@ app/
   tracks.py       caption-track selection policy
   models.py       shared data shapes and error types
   config.py       environment-variable settings
+mcp_server.py     launcher MCP clients run by path (works from any directory)
 static/           the frontend (plain HTML/CSS/JS, no build step), plus the
                   installable-app files: manifest.json, sw.js, icons/
 tests/            pytest suite + node formatter tests + fixtures
